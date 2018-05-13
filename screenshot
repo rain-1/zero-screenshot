@@ -1,7 +1,7 @@
 #!/bin/bash
 
-hash xscreenshot >/dev/null 2>&1 || {
-	echo "ERROR: xscreenshot missing"
+hash screenshot-bin >/dev/null 2>&1 || {
+	echo "ERROR: screenshot-bin missing"
 	exit 1
 }
 
@@ -14,7 +14,7 @@ output=~/Screenshots/
 mkdir -p "$output"
 
 tmpfile="$(mktemp)"
-xscreenshot | ff2png > "$tmpfile"
+screenshot-bin | ff2png > "$tmpfile"
 
 #filename=$(echo | dmenu -p "Filename:")
 filename=screenshot
