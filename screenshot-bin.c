@@ -25,7 +25,6 @@
 #include <X11/cursorfont.h>
 #include <X11/Xregion.h>
 
-// so we don't pass thousands of parameters each time
 typedef struct
 {
 	Display *display;
@@ -36,16 +35,12 @@ typedef struct
 	
 	GC     pen;	
 	Cursor grab_cursor;
-	BOX    anchor; //x1,y1=anchor, x2,y2=current pointer
+	BOX    anchor;
 	int    select_in_progress;
 	int    mouse_grabbed;
 } ProgState;
 
-////////////// SCREEN CAPTURE ROUTINE //////////////
-
-// take screenshot (if enabled)
-void take_screenshot (ProgState *st, BOX rect, int with_mouse) // x2,y2 is width, height
-{
+void take_screenshot (ProgState *st, BOX rect, int with_mouse) {
 	XImage *img;
 	uint32_t tmp, w, h;
 	uint16_t rgba[4];
@@ -98,83 +93,73 @@ void take_screenshot (ProgState *st, BOX rect, int with_mouse) // x2,y2 is width
 		}
 	}
 
-	// TODO emit screenshit
-	
 	XDestroyImage (img);
 }
-///////////////// END OF SCREEN CAPTURE ROUTINE ///////////////
 
-// grap or ungrab the mouse pointer
-void grab_ungrab_mouse (ProgState *st, int grab)
-{
-	if (grab)
-	{
-		//fprintf (stderr, "mouse grab\n");
-		XGrabPointer (st->display, st->root_window, False, 
-					  ButtonPressMask|ButtonReleaseMask|PointerMotionMask,
-					  GrabModeAsync, GrabModeAsync, None, st->grab_cursor, CurrentTime);
-		
-	} else {
-		//fprintf (stderr, "mouse release\n");
+void grab_ungrab_mouse (ProgState *st, int grab) {
+	if (grab) {
+		XGrabPointer (st->display, st->root_window, False,
+			ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync,
+			None, st->grab_cursor, CurrentTime);	
+	}
+	else {
 		XUngrabPointer (st->display, CurrentTime);
 	}
+
 	st->mouse_grabbed = grab;	
 }
 
-
-// draw a rectangle, x2,y2 is width, height
-void draw_rect (ProgState *st, BOX rect)
-{
-	//fprintf (stderr, "%d, %d, %d, %d\n", box->x1, box->y1, width, height);
-	XDrawRectangle (
-		st->display, st->root_window, st->pen, rect.x1, rect.y1, rect.x2, rect.y2
-	);
+void draw_rect (ProgState *st, BOX rect) {
+	XDrawRectangle(st->display, st->root_window, st->pen, rect.x1, rect.y1, rect.x2, rect.y2);
 }
 
-// convert anchor points to a rect (x,y,width,height)
-BOX convert_anchor_to_rect (BOX *anchor)
-{
+BOX convert_anchor_to_rect (BOX *anchor) {
+	// convert anchor points to a rect (x,y,width,height)
+	
 	BOX out;
+	
 	out.x1 = anchor->x1;
 	if (anchor->x1 > anchor->x2) out.x1 = anchor->x2;
+
 	out.y1 = anchor->y1;
 	if (anchor->y1 > anchor->y2) out.y1 = anchor->y2;
+
 	out.x2 = abs (anchor->x1 - anchor->x2);
 	out.y2 = abs (anchor->y1 - anchor->y2);
+
 	return out;
 }
 
-// convert anchor points to an area (x,y,width,height) 
-// inclusive of the anchors themselves
 BOX convert_anchor_to_area (BOX *anchor) {
+	// convert anchor points to an area (x,y,width,height) 
+	// inclusive of the anchors themselves
 	BOX out = convert_anchor_to_rect (anchor);
+
 	out.x2++;
 	out.y2++;
+
 	return out;
 }
 
-// start selection
-void start_selection (ProgState *st, int x, int y)
-{
+void start_selection (ProgState *st, int x, int y) {
 	st->anchor.x1 = st->anchor.x2 = x;
 	st->anchor.y1 = st->anchor.y2 = y;
+
 	st->select_in_progress = 1;
+	
 	draw_rect (st, convert_anchor_to_rect (&st->anchor));
 }
-// end active selection if currently in progress
-void end_selection (ProgState *st)
-{
+
+void end_selection (ProgState *st) {
 	if (st->select_in_progress)
 	{
 		st->select_in_progress = 0;
 		draw_rect (st, convert_anchor_to_rect (&st->anchor));
 	}
 }
-// draw selection box if selection is in progres
-void draw_selection (ProgState *st, int x, int y)
-{
-	if (st->select_in_progress)
-	{
+
+void draw_selection (ProgState *st, int x, int y) {
+	if (st->select_in_progress) {
 		draw_rect (st, convert_anchor_to_rect (&st->anchor));
 		st->anchor.x2 = x;
 		st->anchor.y2 = y;
@@ -183,8 +168,7 @@ void draw_selection (ProgState *st, int x, int y)
 }
 
 // get the area of window under cursor
-BOX get_window_area_under_cursor(ProgState *st) 
-{
+BOX get_window_area_under_cursor(ProgState *st)  {
 	BOX area;
 	area.x1 = area.x2 = area.y1 = area.y2 = 0;
 	
@@ -193,25 +177,26 @@ BOX get_window_area_under_cursor(ProgState *st)
 	int win_x_return, win_y_return;
 	unsigned int mask_return;	
 
-	if (XQueryPointer(st->display, st->root_window, 
-			&root_return, &child_return, // we only want this
-			&root_x_return, &root_y_return, &win_x_return, &win_y_return, &mask_return) == True)
+	if (XQueryPointer(st->display, st->root_window,
+		&root_return, &child_return, // we only want this
+		&root_x_return, &root_y_return, &win_x_return, &win_y_return, &mask_return) == True)
 	{
 		Window win = child_return;
 		if (win == None) {
 			win = root_return;
-		} else {
+		}
+		else {
 			// raise it to make sure it is not obscured
 			XRaiseWindow(st->display,win);
 			XFlush(st->display);
 			sleep(1); // sleep 1 to ensure display is updated
 		}
 
-        int x_return, y_return;
-        unsigned int width_return, height_return;
-        unsigned int border_width_return;
-        unsigned int depth_return;
-        
+		int x_return, y_return;
+		unsigned int width_return, height_return;
+		unsigned int border_width_return;
+		unsigned int depth_return;
+		
 		if (XGetGeometry(st->display, win, &root_return, 
 				&x_return, &y_return, &width_return, &height_return, // we only want this
 				&border_width_return, &depth_return) == True)
@@ -226,12 +211,11 @@ BOX get_window_area_under_cursor(ProgState *st)
 			area.x2 = width_return; area.y2 = height_return;
 		}
 	}
+	
 	return area;
 }
 
-// main event loop
-int event_loop (ProgState *st)
-{
+int event_loop (ProgState *st) {
 	XEvent ev;
 	int running=1;
 	int state;
