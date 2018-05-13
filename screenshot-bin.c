@@ -39,10 +39,6 @@ typedef struct
 	BOX    anchor; //x1,y1=anchor, x2,y2=current pointer
 	int    select_in_progress;
 	int    mouse_grabbed;
-
-	char *screenshot_path;
-
-	int screenshot_delay;
 } ProgState;
 
 ////////////// SCREEN CAPTURE ROUTINE //////////////
