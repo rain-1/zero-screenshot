@@ -1,0 +1,32 @@
+#!/bin/bash
+
+hash xscreenshot >/dev/null 2>&1 || {
+	echo "ERROR: xscreenshot missing"
+	exit 1
+}
+
+hash ff2png >/dev/null 2>&1 || {
+	echo "ERROR: ff2png missing"
+	exit 1
+}
+
+output=~/Screenshots/
+mkdir -p "$output"
+
+tmpfile="$(mktemp)"
+xscreenshot | ff2png > "$tmpfile"
+
+#filename=$(echo | dmenu -p "Filename:")
+filename=screenshot
+counter=""
+
+if [ -f "$output$filename".png ]
+then
+	counter="0"
+	while [ -f "$output$filename$counter".png ]
+	do
+		let counter=counter+1
+	done
+fi
+
+mv "$tmpfile" "$output$filename$counter".png

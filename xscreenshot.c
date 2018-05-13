@@ -21,6 +21,20 @@
 #include <sys/stat.h>
 #include <time.h>
 
+
+#include <arpa/inet.h>
+
+#include <err.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <X11/X.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+
 // so we don't pass thousands of parameters each time
 typedef struct
 {
@@ -53,82 +67,69 @@ int get_shift (int mask)
 	return 0;
 }
 
-// get 24-bit rgb data from XImage, ZPixmap format
-// only supports direct/truecolor 15/16/24 bit, assumes LSB
-unsigned char *extract_rgb24_from_ximage (XImage *image)
-{
-	unsigned char *out=NULL;
-	int x,y,index;
-	int width, height;
-	unsigned long pix;
-	
-	int red_shift, green_shift, blue_shift;
-	int red_mask, green_mask, blue_mask;
-	double red_factor=1.0, green_factor=1.0, blue_factor=1.0;
-	
-	width       = image->width;
-	height      = image->height;
-	red_mask    = image->red_mask;
-	green_mask  = image->green_mask;
-	blue_mask   = image->blue_mask;
-	red_shift   = get_shift (red_mask);
-	green_shift = get_shift (green_mask);
-	blue_shift  = get_shift (blue_mask);
-	
-	switch (image->depth) {
-		case 15:
-		case 16:
-			red_factor   = 255.0/(red_mask   >> red_shift);
-			green_factor = 255.0/(green_mask >> green_shift);
-			blue_factor  = 255.0/(blue_mask  >> blue_shift);		
-		case 24:
-		case 32:
-			break;
-		default:
-			fprintf (stderr, "Unsupported bit depth: %d.\n", image->depth);
-			return NULL;
-	}
-	
-	out = malloc (width * height * 3); // 24-bit RGB (3 bytes per pixel)	
-	for (index=0, y=0; y < height; y++)
-	{
-		for (x=0; x < width; x++)
-		{
-			pix = XGetPixel (image, x,y);
-			out[index++] = ((pix & red_mask)   >> red_shift) * red_factor;
-			out[index++] = ((pix & green_mask) >> green_shift) * green_factor;
-			out[index++] = ((pix & blue_mask)  >> blue_shift) * blue_factor;
-		}
-	}
-	return out;
-}
-
 // take screenshot (if enabled)
 void take_screenshot (ProgState *st, BOX rect, int with_mouse) // x2,y2 is width, height
 {
-	XImage *image;
-	unsigned char *buf;
-	char *fname=NULL;
+	XImage *img;
+	uint32_t tmp, w, h;
+	uint16_t rgba[4];
+	int sr, sg, fr, fg, fb;
 	
 	// sanity check - if either height or width is zero, abort
 	if (!rect.x2 || !rect.y2) return;
 	
-
 	// do actual screenshot
-	image = XGetImage (
+	img = XGetImage (
 		st->display, st->root_window, rect.x1, rect.y1, rect.x2, rect.y2, 
 		AllPlanes, ZPixmap
 	);
-	buf = extract_rgb24_from_ximage (image);
+
+	switch (img->bits_per_pixel) {
+	case 16: /* only 5-6-5 format supported */
+		sr = 11;
+		sg = 5;
+		fr = fb = 2047;
+		fg = 1023;
+		break;
+	case 24:
+	case 32: /* ignore alpha in case of 32-bit */
+		sr = 16;
+		sg = 8;
+		fr = fg = fb = 257;
+		break;
+	default:
+		errx(1, "unsupported bpp: %d", img->bits_per_pixel);
+	}
+
+	/* write header with big endian width and height-values */
+	fprintf(stdout, "farbfeld");
+	tmp = htonl(img->width);
+	fwrite(&tmp, sizeof(uint32_t), 1, stdout);
+	tmp = htonl(img->height);
+	fwrite(&tmp, sizeof(uint32_t), 1, stdout);
+
+	/* write pixels */
+	for (h = 0; h < (uint32_t)img->height; h++) {
+		for (w = 0; w < (uint32_t)img->width; w++) {
+			tmp = XGetPixel(img, w, h);
+			rgba[0] = htons(((tmp & img->red_mask) >> sr) * fr);
+			rgba[1] = htons(((tmp & img->green_mask) >> sg) * fg);
+			rgba[2] = htons((tmp & img->blue_mask) * fb);
+			rgba[3] = htons(65535);
+
+			if (fwrite(&rgba, 4 * sizeof(uint16_t), 1, stdout) != 1)
+				err(1, "fwrite");
+		}
+	}
 
 	// TODO emit screenshit
 	
-	XDestroyImage (image);
+	XDestroyImage (img);
 }
 ///////////////// END OF SCREEN CAPTURE ROUTINE ///////////////
 
 // grap or ungrab the mouse pointer
-int grab_ungrab_mouse (ProgState *st, int grab)
+void grab_ungrab_mouse (ProgState *st, int grab)
 {
 	if (grab)
 	{
@@ -276,7 +277,6 @@ int event_loop (ProgState *st)
 	
 	while (running)
 	{
-next_event:
 		XNextEvent(st->display, &ev);
 		switch(ev.type)
 		{
