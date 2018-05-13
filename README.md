@@ -1,7 +1,8 @@
-# xscreenshot
+This is a screenshot tool for linux/X11.
 
-This is a screenshot tool built by stripping down xannonate's xscreenshot tool, and attaching farbfeld on the end.
+I built it by stripping down xannotate's xscreenshot, replacing part of it with farbfeld xscreenshot.
 
-To use it you need to the ff2png from farbfeld installed in PATH, as well as the xscreenshot binary from here. Then call the ./screenshot script.
+To use it put `ff2png` (from farbfeld) and `screenshot-bin` (built using `makefile.sh`) in `$PATH`. Then run ./screenshot. There is a desktop file too so you can put it in your XFCE menu or whatever.
 
-There is a desktop file too.
+* http://lightofdawn.org/wiki/wiki.cgi/Xannotate
+* https://tools.suckless.org/farbfeld/
