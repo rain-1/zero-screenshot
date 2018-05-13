@@ -1,10 +1,9 @@
 [Desktop Entry]
-Name=Screenshot
-Comment=Save images of your screen or individual windows
-Keywords=snapshot;capture;print;screenshot;
-Exec=screenshot
-Terminal=false
 Type=Application
-Icon=applets-screenshooter
-StartupNotify=true
-Categories=Utility;
+Name=Screenshot
+Comment=screenshot
+Exec=screenshot
+Icon=camera-photo
+Categories=Utility;X-XFCE;X-Xfce-Toplevel;
+Terminal=false
+
