@@ -1,2 +1,2 @@
 #!/bin/sh
-cc -o xscreenshot xscreenshot.c
+cc -Wall -lX11 -o xscreenshot xscreenshot.c

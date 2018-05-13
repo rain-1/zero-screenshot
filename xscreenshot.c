@@ -56,16 +56,6 @@ typedef struct
 } ProgState;
 
 ////////////// SCREEN CAPTURE ROUTINE //////////////
-// get shift count based on mask, assumes LSB
-int get_shift (int mask)
-{
-	int n=0, test=1;
-	while (n < sizeof(mask)*8) {
-		if (mask & test) return n;
-		n++; test<<=1;
-	}
-	return 0;
-}
 
 // take screenshot (if enabled)
 void take_screenshot (ProgState *st, BOX rect, int with_mouse) // x2,y2 is width, height
