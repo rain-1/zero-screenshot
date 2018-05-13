@@ -9,19 +9,6 @@
  * Modifications by Raymond Nicholson, 2018
  */
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/cursorfont.h>
-#include <X11/Xregion.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <time.h>
-
-
 #include <arpa/inet.h>
 
 #include <err.h>
@@ -30,10 +17,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/cursorfont.h>
+#include <X11/Xregion.h>
 
 // so we don't pass thousands of parameters each time
 typedef struct
@@ -194,20 +184,6 @@ void draw_selection (ProgState *st, int x, int y)
 		st->anchor.y2 = y;
 		draw_rect (st, convert_anchor_to_rect (&st->anchor));
 	}
-}
-
-// show notification on screen that capture has been completed
-void notify(ProgState *st, char *msg, int x, int y, int delay) {
-	int msglen;
-	
-	if (!msg) return; 
-	msglen = strlen(msg);
-	
-	XDrawString(st->display, st->root_window, st->pen, x, y, msg, msglen);
-	XSync(st->display, False);
-	sleep (delay);
-	XDrawString(st->display, st->root_window, st->pen, x, y, msg, msglen);
-	XSync(st->display, False);	
 }
 
 // get the area of window under cursor
